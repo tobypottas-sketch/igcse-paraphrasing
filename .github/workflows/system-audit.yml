@@ -6,7 +6,7 @@ permissions:
   contents: write
 jobs:
   harden-review:
-    if: github.ref_name == 'fix/third-hardening-audit-20261014' && !contains(github.event.head_commit.message, 'fix: escape Paraphrasing review records')
+    if: ${{ github.ref_name == 'fix/third-hardening-audit-20261014' && !contains(github.event.head_commit.message, 'fix: escape Paraphrasing review records') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
