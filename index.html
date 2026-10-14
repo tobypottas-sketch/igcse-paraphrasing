@@ -1179,9 +1179,19 @@ function checkSetChoice(i, exType, idx, optIdx, btn){
    }
  }
 }
+function hasFlexibleNegation(value){return /(?:^|\s)(?:not|never|no|without|cannot|can't|cant|isn't|isnt|wasn't|wasnt|didn't|didnt|won't|wont)(?:\s|$)/.test(normalizeText(value));}
+function flexiblePhraseMatch(left,right){
+ const l=normalizeText(left), r=normalizeText(right);
+ if(!l||!r) return false;
+ if(l===r) return true;
+ if(hasFlexibleNegation(l)!==hasFlexibleNegation(r)) return false;
+ const shorter=l.length<=r.length?l:r, longer=l.length<=r.length?r:l;
+ if(!shorter.includes(' ')&&shorter.length<4) return false;
+ return (` ${longer} `).includes(` ${shorter} `);
+}
 function countMatchesFlexible(givenList, answerGroups){
  let matches=0; const used=new Set();
- answerGroups.forEach(group=>{ for(let i=0;i<givenList.length;i++){ if(used.has(i)) continue; const g=normalizeText(givenList[i]); if(!g) continue; if(group.some(ans=>{const a=normalizeText(ans); return g.includes(a)||a.includes(g);})){ used.add(i); matches++; break; } } });
+ answerGroups.forEach(group=>{ for(let i=0;i<givenList.length;i++){ if(used.has(i)) continue; const g=normalizeText(givenList[i]); if(!g) continue; if(group.some(ans=>flexiblePhraseMatch(g,ans))){ used.add(i); matches++; break; } } });
  return matches;
 }
 function checkExercise3(i){
@@ -1207,8 +1217,7 @@ function checkExercise3(i){
 }
 function wordCount(text){return text.trim()?text.trim().split(/\s+/).length:0;}
 function countSummaryPoints(text, groups){const t=normalizeText(text); let count=0; groups.forEach(group=>{ if(group.some(a=>t.includes(normalizeText(a)))) count++; }); return count;}
-function overlapCount(text, sourceWords){const userWords=normalizeText(text).split(' '); return sourceWords.filter(w=>w.length>4&&userWords.includes(w)).length;}
-function updateWordCount(i){const setId='set'+(i+1); document.getElementById(`${setId}_wc`).textContent=wordCount(document.getElementById(`${setId}_summary`).value);}
+function overlapCount(text, sourceWords){const userWords=new Set(normalizeText(text).split(' ').filter(Boolean)); const sourceUnique=new Set(sourceWords.filter(Boolean)); return Array.from(sourceUnique).filter(w=>w.length>4&&userWords.has(w)).length;}
 function checkExercise4(i){
  const set=activities[i], setId='set'+(i+1);
  const examKey=examResponseKey(setId,'ex4');
