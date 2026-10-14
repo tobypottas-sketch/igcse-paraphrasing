@@ -22,3 +22,13 @@ test('stored Exam locks are re-applied to the rebuilt UI after reload', () => {
   assert.match(html, /restoreExamLockUI\(\);/);
   assert.match(html, /Answer recorded\. Review this after the set\./);
 });
+
+test('Starter Exam completes after all 18 responses and then unlocks Results and Review', () => {
+  assert.match(html, /function isStarterExamComplete\(\)/);
+  assert.match(html, /count\('starter-choice:pm:'\)>=5/);
+  assert.match(html, /count\('starter-choice:sm:'\)>=5/);
+  assert.match(html, /count\('starter-write:ws:'\)>=4/);
+  assert.match(html, /count\('starter-write:wp:'\)>=4/);
+  assert.match(html, /if\(tab==='starter'\) return isStarterExamComplete\(\)/);
+  assert.match(html, /const starterLocked=getMode\(\)==='exam' && !isStarterExamComplete\(\)/);
+});
