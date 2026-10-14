@@ -2,7 +2,7 @@ name: Apply Sixth Hardening
 on:
   push:
     branches: [fix/sixth-hardening-audit-20261015]
-    paths: [.github/audit6-trigger]
+    paths: ['.github/audit6-trigger']
 permissions:
   contents: write
 jobs:
@@ -21,34 +21,14 @@ jobs:
           from pathlib import Path
           p=Path('index.html')
           s=p.read_text()
-          old="""function countMatchesFlexible(givenList, answerGroups){
- let matches=0; const used=new Set();
- answerGroups.forEach(group=>{ for(let i=0;i<givenList.length;i++){ if(used.has(i)) continue; const g=normalizeText(givenList[i]); if(!g) continue; if(group.some(ans=>{const a=normalizeText(ans); return g.includes(a)||a.includes(g);})){ used.add(i); matches++; break; } } });
- return matches;
-}
-"""
-          new="""function hasFlexibleNegation(value){return /(?:^|\\s)(?:not|never|no|without|cannot|can't|cant|isn't|isnt|wasn't|wasnt|didn't|didnt|won't|wont)(?:\\s|$)/.test(normalizeText(value));}
-function flexiblePhraseMatch(left,right){
- const l=normalizeText(left), r=normalizeText(right);
- if(!l||!r) return false;
- if(l===r) return true;
- if(hasFlexibleNegation(l)!==hasFlexibleNegation(r)) return false;
- const shorter=l.length<=r.length?l:r, longer=l.length<=r.length?r:l;
- if(!shorter.includes(' ')&&shorter.length<4) return false;
- return (` ${longer} `).includes(` ${shorter} `);
-}
-function countMatchesFlexible(givenList, answerGroups){
- let matches=0; const used=new Set();
- answerGroups.forEach(group=>{ for(let i=0;i<givenList.length;i++){ if(used.has(i)) continue; const g=normalizeText(givenList[i]); if(!g) continue; if(group.some(ans=>flexiblePhraseMatch(g,ans))){ used.add(i); matches++; break; } } });
- return matches;
-}
-"""
-          if old not in s: raise SystemExit('Exercise 3 matcher anchor missing')
-          s=s.replace(old,new,1)
-          old2="function overlapCount(text, sourceWords){const userWords=normalizeText(text).split(' '); return sourceWords.filter(w=>w.length>4&&userWords.includes(w)).length;}"
-          new2="function overlapCount(text, sourceWords){const userWords=new Set(normalizeText(text).split(' ').filter(Boolean)); const sourceUnique=new Set(sourceWords.filter(Boolean)); return Array.from(sourceUnique).filter(w=>w.length>4&&userWords.has(w)).length;}"
-          if old2 not in s: raise SystemExit('Exercise 4 overlap anchor missing')
-          s=s.replace(old2,new2,1)
+          start=s.index('function countMatchesFlexible')
+          end=s.index('function checkExercise3',start)
+          new="function hasFlexibleNegation(value){return /(?:^|\\s)(?:not|never|no|without|cannot|can't|cant|isn't|isnt|wasn't|wasnt|didn't|didnt|won't|wont)(?:\\s|$)/.test(normalizeText(value));}\nfunction flexiblePhraseMatch(left,right){\n const l=normalizeText(left), r=normalizeText(right);\n if(!l||!r) return false;\n if(l===r) return true;\n if(hasFlexibleNegation(l)!==hasFlexibleNegation(r)) return false;\n const shorter=l.length<=r.length?l:r, longer=l.length<=r.length?r:l;\n if(!shorter.includes(' ')&&shorter.length<4) return false;\n return (` ${longer} `).includes(` ${shorter} `);\n}\nfunction countMatchesFlexible(givenList, answerGroups){\n let matches=0; const used=new Set();\n answerGroups.forEach(group=>{ for(let i=0;i<givenList.length;i++){ if(used.has(i)) continue; const g=normalizeText(givenList[i]); if(!g) continue; if(group.some(ans=>flexiblePhraseMatch(g,ans))){ used.add(i); matches++; break; } } });\n return matches;\n}\n"
+          s=s[:start]+new+s[end:]
+          start=s.index('function overlapCount')
+          end=s.index('function checkExercise4',start)
+          new2="function overlapCount(text, sourceWords){const userWords=new Set(normalizeText(text).split(' ').filter(Boolean)); const sourceUnique=new Set(sourceWords.filter(Boolean)); return Array.from(sourceUnique).filter(w=>w.length>4&&userWords.has(w)).length;}\n"
+          s=s[:start]+new2+s[end:]
           p.write_text(s)
           PY
       - run: node --test tests/*.test.mjs
