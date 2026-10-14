@@ -5,6 +5,9 @@ on:
     branches:
       - fix/exam-hardening
 
+permissions:
+  contents: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -13,4 +16,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - run: node .github/scripts/apply-exam-hardening.mjs
       - run: node --test tests/exam-hardening.test.mjs tests/review-safeguards.test.mjs tests/exam-mode-safeguards.test.mjs
+      - name: Commit generated hardening
+        run: |
+          if git diff --quiet -- index.html; then
+            echo "No generated changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "fix: finish Paraphrasing Exam Mode hardening"
+          git push
