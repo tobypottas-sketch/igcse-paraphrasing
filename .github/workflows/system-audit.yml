@@ -2,6 +2,8 @@ name: System Audit
 on:
   push:
     branches: [main, fix/system-audit-20261014, fix/third-hardening-audit-20261014, fix/fourth-hardening-audit-20261014, fix/fifth-hardening-audit-20261014]
+permissions:
+  contents: write
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -10,4 +12,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Apply fifth-audit fix on audit branch
+        if: github.ref_name == 'fix/fifth-hardening-audit-20261014' && github.actor != 'github-actions[bot]'
+        run: node scripts/apply-fifth-fix.mjs
       - run: node --test tests/*.test.mjs
+      - name: Commit fifth-audit fix
+        if: github.ref_name == 'fix/fifth-hardening-audit-20261014' && github.actor != 'github-actions[bot]'
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add index.html
+          if ! git diff --cached --quiet; then
+            git commit -m "fix: reject trivial Paraphrasing synonym fragments"
+            git push
+          fi
