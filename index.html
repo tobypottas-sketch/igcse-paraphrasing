@@ -642,7 +642,19 @@ function switchTab(tab){
  if(tab==='review')renderReview();
 }
 function normalizeText(s){return String(s||'').toLowerCase().trim().replace(/[.,!?;:()]/g,'').replace(/\s+/g,' ');}
-function similarityLoose(answer, acceptedList){const a=normalizeText(answer); return acceptedList.some(acc=>{const x=normalizeText(acc); return a===x || a.includes(x) || x.includes(a);});}
+function similarityLoose(answer, acceptedList){
+  const a=normalizeText(answer);
+  if(!a) return false;
+  return acceptedList.some(acc=>{
+    const x=normalizeText(acc);
+    if(!x) return false;
+    if(a===x) return true;
+    const shorter = a.length <= x.length ? a : x;
+    const longer = a.length <= x.length ? x : a;
+    if(!shorter.includes(' ') && shorter.length < 3) return false;
+    return (` ${longer} `).includes(` ${shorter} `);
+  });
+}
 function recordResult(area,prompt,user,accepted,strong,note,setId=null, skill=null){
  const st=getState();
  st.records.push({area,prompt,user,accepted,strong,note,setId,skill});
