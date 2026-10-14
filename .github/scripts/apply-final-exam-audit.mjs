@@ -80,6 +80,32 @@ if(!html.includes('st.starterSet=currentStarterSet')){
 'starter persistence');
 }
 
+if(!html.includes('function isStarterExamComplete()')){
+  replaceOnce(
+`function canOpenResults(){
+ if(getMode()!=='exam') return true;
+ const idx=getActiveSetIndex();
+ return idx>=0 && isSetComplete(idx);
+}`,
+`function isStarterExamComplete(){
+ const locks=getState().examLocks || {};
+ const count=(prefix)=>Object.keys(locks).filter(key=>key.startsWith(prefix)).length;
+ return count('starter-choice:pm:')>=5 &&
+        count('starter-choice:sm:')>=5 &&
+        count('starter-write:ws:')>=4 &&
+        count('starter-write:wp:')>=4;
+}
+function canOpenResults(){
+ if(getMode()!=='exam') return true;
+ const active=document.querySelector('.tab-btn.active');
+ const tab=active && active.dataset ? active.dataset.tab : '';
+ if(tab==='starter') return isStarterExamComplete();
+ const idx=getActiveSetIndex();
+ return idx>=0 && isSetComplete(idx);
+}`,
+'starter Exam completion');
+}
+
 if(!html.includes('function restoreExamLockUI()')){
   const anchor=`function renderReview(){`;
   const helper=`function restoreExamLockUI(){
@@ -119,7 +145,20 @@ if(!html.includes('function restoreExamLockUI()')){
   replaceOnce(anchor, helper+anchor, 'restore helper anchor');
 }
 
-replaceOnce(
+if(!html.includes("const starterLocked=getMode()==='exam' && !isStarterExamComplete();")){
+  replaceOnce(
+` else notice.textContent=getMode()==='exam'?'Starter model answers stay hidden in Exam mode.':'Starter results show model answers in Practice mode. Exam-style set answers unlock only after the whole set is complete.';`,
+` else if(getMode()==='exam' && isStarterExamComplete()) notice.textContent='Starter Exam attempt complete. Model answers are now available below.';
+ else notice.textContent=getMode()==='exam'?'Complete all 18 Starter questions to unlock Starter model answers.':'Starter results show model answers in Practice mode. Exam-style set answers unlock only after the whole set is complete.';`,
+'starter review notice');
+  replaceOnce(
+` const starterLocked=getMode()==='exam';`,
+` const starterLocked=getMode()==='exam' && !isStarterExamComplete();`,
+'starter review gate');
+}
+
+if(!html.includes('if(st.starterSet && st.starterSet.phraseMatch)')){
+  replaceOnce(
 `function renderAll(){generateStarterSet(); for(let i=0;i<activities.length;i++) renderSet(i); renderResults(); updateModeUI(); renderReview();}`,
 `function renderAll(){
  const st=getState();
@@ -132,5 +171,6 @@ replaceOnce(
  restoreExamLockUI();
 }`,
 'renderAll persistence');
+}
 
 fs.writeFileSync(file,html);
