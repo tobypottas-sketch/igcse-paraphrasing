@@ -6,7 +6,6 @@ permissions:
   contents: write
 jobs:
   harden-review:
-    if: ${{ github.ref_name == 'fix/third-hardening-audit-20261014' && !contains(github.event.head_commit.message, 'fix: escape Paraphrasing review records') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -37,7 +36,7 @@ jobs:
               s = s.replace(old, new)
           p.write_text(s)
           PY
-      - name: Commit patch
+      - name: Commit patch if needed
         run: |
           if git diff --quiet -- index.html; then
             echo 'No patch needed.'
