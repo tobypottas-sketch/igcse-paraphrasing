@@ -19,7 +19,7 @@ test('Exam Mode locks each response after the first submission', () => {
 
 test('Results are blocked while the active Exam set is unfinished', () => {
   assert.match(html, /function canOpenResults\(\)/);
-  assert.match(html, /if\(tab==='results' && !canOpenResults\(\)\) return;/);
+  assert.match(html, /if\(tab==='results' && !canOpenResults\(\)\)\{/);
   assert.match(html, /Complete the current Exam set before viewing Results\./);
 });
 
