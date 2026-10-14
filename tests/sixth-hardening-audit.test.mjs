@@ -12,16 +12,10 @@ function between(startMarker, endMarker){
   return html.slice(start, end);
 }
 
-function loadFunction(name, source){
-  const context = {};
-  vm.createContext(context);
-  vm.runInContext(`${source}\nthis.__fn = ${name};`, context);
-  return context.__fn;
-}
-
 test('Exercise 3 matcher rejects tiny substring fragments but accepts meaningful phrase containment', () => {
   const normalize = between('function normalizeText', 'function similarityLoose');
-  const matcher = between('function countMatchesFlexible', 'function checkExercise3');
+  const matcherStart = html.includes('function hasFlexibleNegation') ? 'function hasFlexibleNegation' : 'function countMatchesFlexible';
+  const matcher = between(matcherStart, 'function checkExercise3');
   const context = {};
   vm.createContext(context);
   vm.runInContext(`${normalize}\n${matcher}\nthis.__fn = countMatchesFlexible;`, context);
