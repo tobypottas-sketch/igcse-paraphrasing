@@ -513,6 +513,9 @@ function getState(){
 }
 function saveState(st){writeStoredState(JSON.stringify(st));}
 function getMode(){ return getState().mode || 'practice'; }
+function examResponseKey(...parts){ return parts.map(v=>String(v)).join(':'); }
+function isExamResponseLocked(key){ const st=getState(); return !!(st.examLocks && st.examLocks[key]); }
+function lockExamResponse(key){ const st=getState(); st.examLocks=st.examLocks || {}; st.examLocks[key]=true; saveState(st); }
 function showExamRecordedFeedback(id){
  const el=document.getElementById(id);
  if(el) el.innerHTML='<div class="notice notice-blue">Answer recorded. Review this after the set.</div>';
@@ -570,7 +573,27 @@ function updateModeUI(){
     weak.textContent = labels[getWeakFocus()] || 'general review';
   }
 }
-function switchTab(tab){document.querySelectorAll('.tab-btn').forEach(btn=>btn.classList.toggle('active', btn.dataset.tab===tab));document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.getElementById('panel-'+tab).classList.add('active');if(tab==='review')renderReview();}
+function getActiveSetIndex(){
+ const active=document.querySelector('.tab-btn.active');
+ const tab=active && active.dataset ? active.dataset.tab : '';
+ return ['set1','set2','set3','set4','set5'].indexOf(tab);
+}
+function canOpenResults(){
+ if(getMode()!=='exam') return true;
+ const idx=getActiveSetIndex();
+ return idx>=0 && isSetComplete(idx);
+}
+function switchTab(tab){
+ if(tab==='results' && !canOpenResults()){
+   const n=document.getElementById('modeNotice');
+   if(n) n.textContent='Complete the current Exam set before viewing Results.';
+   return;
+ }
+ document.querySelectorAll('.tab-btn').forEach(btn=>btn.classList.toggle('active', btn.dataset.tab===tab));
+ document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+ document.getElementById('panel-'+tab).classList.add('active');
+ if(tab==='review')renderReview();
+}
 function normalizeText(s){return String(s||'').toLowerCase().trim().replace(/[.,!?;:()]/g,'').replace(/\s+/g,' ');}
 function similarityLoose(answer, acceptedList){const a=normalizeText(answer); return acceptedList.some(acc=>{const x=normalizeText(acc); return a===x || a.includes(x) || x.includes(a);});}
 function recordResult(area,prompt,user,accepted,strong,note,setId=null, skill=null){
@@ -873,12 +896,16 @@ function renderStarter(){
 }
 function checkStarterChoice(prefix,idx,optIdx,btn){
  const list=prefix==='pm'?currentStarterSet.phraseMatch:currentStarterSet.sentenceMatch; const task=list[idx]; const parent=btn.parentElement; const mode=getMode();
+ const examKey=examResponseKey('starter-choice',prefix,idx);
+ if(mode==='exam' && isExamResponseLocked(examKey)){ showExamRecordedFeedback(`${prefix}Feedback_${idx}`); return; }
  const strong=optIdx===task.answer;
  Array.from(parent.children).forEach((b)=>{b.classList.remove('selected','correct','wrong');});
  if(mode==='exam'){
    btn.classList.add('selected');
    showExamRecordedFeedback(`${prefix}Feedback_${idx}`);
    recordResult(prefix==='pm'?'Starter Match: Phrase':'Starter Match: Sentence', task.stem, task.options[optIdx], task.options[task.answer], strong, 'Recorded in exam mode.', null, prefix==='pm'?'phrase_match':'sentence_match');
+   lockExamResponse(examKey);
+   Array.from(parent.children).forEach(b=>b.disabled=true);
    return;
  }
  if(strong){
@@ -900,6 +927,8 @@ function checkStarterWrite(prefix,idx){
  const task=list[idx];
  const user=document.getElementById(`${prefix}_${idx}`).value.trim();
  const mode=getMode();
+ const examKey=examResponseKey('starter-write',prefix,idx);
+ if(mode==='exam' && isExamResponseLocked(examKey)){ showExamRecordedFeedback(`${prefix}Feedback_${idx}`); return; }
  const attempt=incrementAttemptCount(prefix, idx);
  const result=evaluateTrainingAnswer(user,task.accepted,prefix);
  const hint=getWrittenHint(task,prefix);
@@ -971,6 +1000,7 @@ function checkStarterWrite(prefix,idx){
  }
  document.getElementById(`${prefix}Feedback_${idx}`).innerHTML=`<div class="notice ${cls}">${feedback}</div>${modelBlock}${explain}`;
  recordResult(prefix==='ws'?'Starter Write: Synonym':'Starter Write: Paraphrase', task.prompt, user, task.accepted[0], strong, note, null, skill);
+ if(mode==='exam'){ lockExamResponse(examKey); const input=document.getElementById(`${prefix}_${idx}`); if(input) input.disabled=true; }
 }
 function getExercise3Meta(setIndex){
  const meta=[
@@ -1053,6 +1083,8 @@ function checkSetChoice(i, exType, idx, optIdx, btn){
  const answerIndex=exType==='ex1'?task.shuffled.answer:['A','B','C','D'].indexOf(task.answer);
  const parent=btn.parentElement;
  const mode=getMode();
+ const examKey=examResponseKey(setId,exType,idx);
+ if(mode==='exam' && isExamResponseLocked(examKey)){ showExamRecordedFeedback(`${setId}_${exType}_${idx}`); return; }
  Array.from(parent.children).forEach((b)=>{b.classList.remove('selected','correct','wrong');});
  const strong=optIdx===answerIndex;
  const skill = exType==='ex1' ? 'ex1' : 'ex2';
@@ -1060,6 +1092,8 @@ function checkSetChoice(i, exType, idx, optIdx, btn){
    btn.classList.add('selected');
    showExamRecordedFeedback(`${setId}_${exType}_${idx}`);
    recordResult(`Activity ${i+1} ${exType.toUpperCase()}`, task.q, exType==='ex1'?task.shuffled.options[optIdx]:['A','B','C','D'][optIdx], exType==='ex1'?task.shuffled.options[answerIndex]:task.answer, strong, 'Recorded in exam mode.', setId, skill);
+   lockExamResponse(examKey);
+   Array.from(parent.children).forEach(b=>b.disabled=true);
    return;
  }
  if(strong){
@@ -1082,11 +1116,16 @@ function countMatchesFlexible(givenList, answerGroups){
  return matches;
 }
 function checkExercise3(i){
- const set=activities[i], setId='set'+(i+1); const h10=set.ex3_h10.map((_,idx)=>document.getElementById(`${setId}_h10_${idx}`).value); const h11=set.ex3_h11.map((_,idx)=>document.getElementById(`${setId}_h11_${idx}`).value);
+ const set=activities[i], setId='set'+(i+1);
+ const examKey=examResponseKey(setId,'ex3');
+ if(getMode()==='exam' && isExamResponseLocked(examKey)){ showExamRecordedFeedback(`${setId}_ex3_feedback`); return; } const h10=set.ex3_h10.map((_,idx)=>document.getElementById(`${setId}_h10_${idx}`).value); const h11=set.ex3_h11.map((_,idx)=>document.getElementById(`${setId}_h11_${idx}`).value);
  const s10=countMatchesFlexible(h10,set.ex3_h10), s11=countMatchesFlexible(h11,set.ex3_h11); const strong=(s10+s11)>=(set.ex3_h10.length+set.ex3_h11.length-1);
  if(getMode()==='exam'){
    showExamRecordedFeedback(`${setId}_ex3_feedback`);
    recordResult(`Activity ${i+1} EX3`, 'Heading-based notes', h10.concat(h11).filter(Boolean).join(' | '), 'Accepted by heading in any order', strong, 'Recorded in exam mode.', setId, 'ex3');
+   lockExamResponse(examKey);
+   document.querySelectorAll(`#${setId}Container .note-row input`).forEach(el=>el.disabled=true);
+   const checkBtn=document.querySelector(`[data-action="check-ex3"][data-set="${i}"]`); if(checkBtn) checkBtn.disabled=true;
    return;
  }
  document.getElementById(`${setId}_ex3_feedback`).innerHTML=`<div class="notice ${strong?'notice-green':'notice-coral'}">You found <strong>${s10}/${set.ex3_h10.length}</strong> acceptable notes under “${getExercise3Heading(i,10)}” and <strong>${s11}/${set.ex3_h11.length}</strong> under “${getExercise3Heading(i,11)}”. Answers can be in any order within each heading.</div>`;
@@ -1097,11 +1136,17 @@ function countSummaryPoints(text, groups){const t=normalizeText(text); let count
 function overlapCount(text, sourceWords){const userWords=normalizeText(text).split(' '); return sourceWords.filter(w=>w.length>4&&userWords.includes(w)).length;}
 function updateWordCount(i){const setId='set'+(i+1); document.getElementById(`${setId}_wc`).textContent=wordCount(document.getElementById(`${setId}_summary`).value);}
 function checkExercise4(i){
- const set=activities[i], setId='set'+(i+1), text=document.getElementById(`${setId}_summary`).value.trim(); const wc=wordCount(text), points=countSummaryPoints(text,set.ex4_points), overlap=overlapCount(text,normalizeText(set.ex4_text).split(' '));
+ const set=activities[i], setId='set'+(i+1);
+ const examKey=examResponseKey(setId,'ex4');
+ if(getMode()==='exam' && isExamResponseLocked(examKey)){ showExamRecordedFeedback(`${setId}_ex4_feedback`); return; }
+ const text=document.getElementById(`${setId}_summary`).value.trim(); const wc=wordCount(text), points=countSummaryPoints(text,set.ex4_points), overlap=overlapCount(text,normalizeText(set.ex4_text).split(' '));
  const strong=points>=5 && wc>=65 && wc<=95 && overlap<10;
  if(getMode()==='exam'){
    showExamRecordedFeedback(`${setId}_ex4_feedback`);
    recordResult(`Activity ${i+1} EX4`, set.ex4_title, text, 'A concise own-words summary with several relevant points', strong, 'Recorded in exam mode.', setId, 'ex4');
+   lockExamResponse(examKey);
+   const summary=document.getElementById(`${setId}_summary`); if(summary) summary.disabled=true;
+   const checkBtn=document.querySelector(`[data-action="check-ex4"][data-set="${i}"]`); if(checkBtn) checkBtn.disabled=true;
    return;
  }
  let msg=`You included about <strong>${points}</strong> useful points. Word count: <strong>${wc}</strong>. `;
@@ -1109,12 +1154,17 @@ function checkExercise4(i){
  document.getElementById(`${setId}_ex4_feedback`).innerHTML=`<div class="notice ${strong?'notice-green':'notice-coral'}">${strong?'Strong summary. ':'Needs more work. '}${msg}</div>` + (getMode()==='practice' && strong ? buildWhyItWorks(set.ex4_title, 'A concise own-words summary with several relevant points', 'Strong summaries select relevant points, keep close to the word limit, and avoid heavy lifting.') : '');
  recordResult(`Activity ${i+1} EX4`, set.ex4_title, text, 'A concise own-words summary with several relevant points', strong, 'Strong summaries select relevant points, keep close to the word limit, and avoid heavy lifting.', setId, 'ex4');
 }
+function uniqueExerciseCount(records,setId,exercise){
+ const keys=new Set();
+ records.filter(r=>r.setId===setId && r.area.includes(exercise)).forEach(r=>keys.add(r.area+'|'+r.prompt));
+ return keys.size;
+}
 function isSetComplete(i){
  const st=getState(), setId='set'+(i+1);
- return st.records.filter(r=>r.setId===setId && r.area.includes('EX1')).length>=3 &&
-        st.records.filter(r=>r.setId===setId && r.area.includes('EX2')).length>=4 &&
-        st.records.filter(r=>r.setId===setId && r.area.includes('EX3')).length>=1 &&
-        st.records.filter(r=>r.setId===setId && r.area.includes('EX4')).length>=1;
+ return uniqueExerciseCount(st.records,setId,'EX1')>=3 &&
+        uniqueExerciseCount(st.records,setId,'EX2')>=4 &&
+        uniqueExerciseCount(st.records,setId,'EX3')>=1 &&
+        uniqueExerciseCount(st.records,setId,'EX4')>=1;
 }
 function renderResults(){
  const st=getState(), attempts=st.records.length, strong=st.records.filter(r=>r.strong).length, partial=attempts-strong, acc=attempts?Math.round((strong/attempts)*100):0;
@@ -1138,9 +1188,10 @@ function renderReview(){
  const st=getState(), box=document.getElementById('reviewContainer'), activeEl=document.querySelector('.tab-btn.active'), active=(activeEl && activeEl.dataset && activeEl.dataset.tab) ? activeEl.dataset.tab : 'overview', setIndex=['set1','set2','set3','set4','set5'].indexOf(active), notice=document.getElementById('reviewNotice');
  if(setIndex>=0 && !isSetComplete(setIndex)) notice.textContent='Complete all four exercises in the current set to unlock model answers for that set.';
  else if(setIndex>=0) notice.textContent='This set is complete, so model answers are now visible below.';
- else notice.textContent='Starter results always show model answers. Exam-style set answers unlock only after the whole set is complete.';
+ else notice.textContent=getMode()==='exam'?'Starter model answers stay hidden in Exam mode.':'Starter results show model answers in Practice mode. Exam-style set answers unlock only after the whole set is complete.';
  if(!st.records.length){box.innerHTML='<div class="notice notice-blue">No checked tasks yet.</div>'; return;}
- box.innerHTML=st.records.slice().reverse().slice(0,30).map(r=>{const locked=r.setId && !isSetComplete(parseInt(r.setId.replace('set',''))-1); const reviewUnlocked=!locked; return `<div class="review-item ${reviewUnlocked?(r.strong?'good':'bad'):''}"><strong>${r.area}</strong><div class="answer-box"><strong>Task:</strong> ${r.prompt}</div><div class="answer-box"><strong>Your answer:</strong> ${r.user||'No answer'}</div><div class="answer-box"><strong>Model / accepted idea:</strong> ${reviewUnlocked?r.accepted:'Hidden until the whole set is complete'}</div><div class="answer-box"><strong>Why:</strong> ${reviewUnlocked?r.note:'Hidden until the whole set is complete'}</div></div>`;}).join('');
+ const starterLocked=getMode()==='exam';
+ box.innerHTML=st.records.slice().reverse().slice(0,30).map(r=>{const locked=r.setId && !isSetComplete(parseInt(r.setId.replace('set',''))-1); const reviewUnlocked=r.setId?!locked:!starterLocked; return `<div class="review-item ${reviewUnlocked?(r.strong?'good':'bad'):''}"><strong>${r.area}</strong><div class="answer-box"><strong>Task:</strong> ${r.prompt}</div><div class="answer-box"><strong>Your answer:</strong> ${r.user||'No answer'}</div><div class="answer-box"><strong>Model / accepted idea:</strong> ${reviewUnlocked?r.accepted:'Hidden until the whole set is complete'}</div><div class="answer-box"><strong>Why:</strong> ${reviewUnlocked?r.note:'Hidden until the whole set is complete'}</div></div>`;}).join('');
 }
 function renderAll(){generateStarterSet(); for(let i=0;i<activities.length;i++) renderSet(i); renderResults(); updateModeUI(); renderReview();}
 window.addEventListener('DOMContentLoaded', renderAll);
