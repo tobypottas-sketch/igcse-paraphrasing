@@ -1285,6 +1285,14 @@ function restoreExamLockUI(){
    }
  });
 }
+function escapeHtml(value){
+ return String(value ?? '')
+  .replace(/&/g,'&amp;')
+  .replace(/</g,'&lt;')
+  .replace(/>/g,'&gt;')
+  .replace(/\"/g,'&quot;')
+  .replace(/'/g,'&#39;');
+}
 function renderReview(){
  const st=getState(), box=document.getElementById('reviewContainer'), activeEl=document.querySelector('.tab-btn.active'), active=(activeEl && activeEl.dataset && activeEl.dataset.tab) ? activeEl.dataset.tab : 'overview', setIndex=['set1','set2','set3','set4','set5'].indexOf(active), notice=document.getElementById('reviewNotice');
  if(setIndex>=0 && !isSetComplete(setIndex)) notice.textContent='Complete all four exercises in the current set to unlock model answers for that set.';
@@ -1293,7 +1301,7 @@ function renderReview(){
  else notice.textContent=getMode()==='exam'?'Complete all 18 Starter questions to unlock Starter model answers.':'Starter results show model answers in Practice mode. Exam-style set answers unlock only after the whole set is complete.';
  if(!st.records.length){box.innerHTML='<div class="notice notice-blue">No checked tasks yet.</div>'; return;}
  const starterLocked=getMode()==='exam' && !isStarterExamComplete();
- box.innerHTML=st.records.slice().reverse().slice(0,30).map(r=>{const locked=r.setId && !isSetComplete(parseInt(r.setId.replace('set',''))-1); const reviewUnlocked=r.setId?!locked:!starterLocked; return `<div class="review-item ${reviewUnlocked?(r.strong?'good':'bad'):''}"><strong>${r.area}</strong><div class="answer-box"><strong>Task:</strong> ${r.prompt}</div><div class="answer-box"><strong>Your answer:</strong> ${r.user||'No answer'}</div><div class="answer-box"><strong>Model / accepted idea:</strong> ${reviewUnlocked?r.accepted:'Hidden until the whole set is complete'}</div><div class="answer-box"><strong>Why:</strong> ${reviewUnlocked?r.note:'Hidden until the whole set is complete'}</div></div>`;}).join('');
+ box.innerHTML=st.records.slice().reverse().slice(0,30).map(r=>{const locked=r.setId && !isSetComplete(parseInt(r.setId.replace('set',''))-1); const reviewUnlocked=r.setId?!locked:!starterLocked; return `<div class="review-item ${reviewUnlocked?(r.strong?'good':'bad'):''}"><strong>${escapeHtml(r.area)}</strong><div class="answer-box"><strong>Task:</strong> ${escapeHtml(r.prompt)}</div><div class="answer-box"><strong>Your answer:</strong> ${escapeHtml(r.user||'No answer')}</div><div class="answer-box"><strong>Model / accepted idea:</strong> ${escapeHtml(reviewUnlocked?r.accepted:'Hidden until the whole set is complete')}</div><div class="answer-box"><strong>Why:</strong> ${escapeHtml(reviewUnlocked?r.note:'Hidden until the whole set is complete')}</div></div>`;}).join('');
 }
 function renderAll(){
  const st=getState();
