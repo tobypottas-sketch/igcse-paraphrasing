@@ -10,15 +10,18 @@ const bank = JSON.parse(match[1]);
 const words = s => String(s).toLowerCase().replace(/^paraphrase:\s*/, '').match(/[a-z]+(?:'[a-z]+)?/g) || [];
 
 test('accepted paraphrases never repeat the source sentence unchanged', () => {
+  const copied=[];
   for (const item of bank) {
     const source = words(item.prompt).join(' ');
     for (const accepted of item.accepted) {
-      assert.notEqual(words(accepted).join(' '), source, `Copied source accepted: ${item.prompt}`);
+      if(words(accepted).join(' ') === source) copied.push(`${item.prompt} -> ${accepted}`);
     }
   }
+  assert.deepEqual(copied, [], `Copied source answers:\n${copied.join('\n')}`);
 });
 
 test('accepted paraphrases make a meaningful lexical change to the source', () => {
+  const weak=[];
   for (const item of bank) {
     const source = new Set(words(item.prompt));
     for (const accepted of item.accepted) {
@@ -26,7 +29,8 @@ test('accepted paraphrases make a meaningful lexical change to the source', () =
       let retained = 0;
       source.forEach(w => { if (answer.has(w)) retained++; });
       const ratio = source.size ? retained / source.size : 0;
-      assert.ok(ratio < 0.8, `Too little change (${ratio.toFixed(2)}): ${item.prompt} -> ${accepted}`);
+      if(ratio >= 0.8) weak.push(`${ratio.toFixed(2)} | ${item.prompt} -> ${accepted}`);
     }
   }
+  assert.deepEqual(weak, [], `Weak paraphrases:\n${weak.join('\n')}`);
 });
