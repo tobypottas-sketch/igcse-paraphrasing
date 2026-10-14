@@ -3,6 +3,15 @@ import fs from 'node:fs';
 const file='index.html';
 let html=fs.readFileSync(file,'utf8');
 
+if(
+  html.includes("function examResponseKey(...parts)") &&
+  html.includes("function uniqueExerciseCount(records,setId,exercise)") &&
+  html.includes("const starterLocked=getMode()==='exam'")
+){
+  console.log('Exam hardening already applied.');
+  process.exit(0);
+}
+
 function replaceOnce(before,after,label){
   if(!html.includes(before)) throw new Error(`Expected ${label} source not found.`);
   html=html.replace(before,after);
