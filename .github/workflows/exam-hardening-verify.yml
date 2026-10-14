@@ -1,0 +1,16 @@
+name: Final Exam Hardening Verification
+
+on:
+  push:
+    branches:
+      - fix/exam-hardening
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test tests/exam-hardening.test.mjs tests/review-safeguards.test.mjs tests/exam-mode-safeguards.test.mjs
