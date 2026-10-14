@@ -513,6 +513,10 @@ function getState(){
 }
 function saveState(st){writeStoredState(JSON.stringify(st));}
 function getMode(){ return getState().mode || 'practice'; }
+function showExamRecordedFeedback(id){
+ const el=document.getElementById(id);
+ if(el) el.innerHTML='<div class="notice notice-blue">Answer recorded. Review this after the set.</div>';
+}
 function setAppMode(mode){
   const st=getState();
   st.mode=mode;
@@ -871,6 +875,12 @@ function checkStarterChoice(prefix,idx,optIdx,btn){
  const list=prefix==='pm'?currentStarterSet.phraseMatch:currentStarterSet.sentenceMatch; const task=list[idx]; const parent=btn.parentElement; const mode=getMode();
  const strong=optIdx===task.answer;
  Array.from(parent.children).forEach((b)=>{b.classList.remove('selected','correct','wrong');});
+ if(mode==='exam'){
+   btn.classList.add('selected');
+   showExamRecordedFeedback(`${prefix}Feedback_${idx}`);
+   recordResult(prefix==='pm'?'Starter Match: Phrase':'Starter Match: Sentence', task.stem, task.options[optIdx], task.options[task.answer], strong, 'Recorded in exam mode.', null, prefix==='pm'?'phrase_match':'sentence_match');
+   return;
+ }
  if(strong){
    Array.from(parent.children).forEach((b,i)=>{ if(i===optIdx){ b.classList.add('selected','correct'); }});
    document.getElementById(`${prefix}Feedback_${idx}`).innerHTML=`<div class="notice notice-green">Correct. ${task.why}</div>` + (mode==='practice' ? buildWhyItWorks(task.stem, task.options[task.answer], task.why) : '');
@@ -897,10 +907,9 @@ function checkStarterWrite(prefix,idx){
  const skill = prefix==='ws' ? 'synonym_write' : 'paraphrase_write';
  if(mode==='exam'){
    strong = result.level==='correct';
-   feedback = strong ? `Correct. ${task.why}` : 'Recorded. Review this after the set.';
-   cls = strong ? 'notice-green' : 'notice-coral';
-   note = strong ? task.why : 'Incorrect in exam mode.';
-   if(strong) explain = buildWhyItWorks(task.prompt, task.accepted[0], task.why);
+   feedback = 'Answer recorded. Review this after the set.';
+   cls = 'notice-blue';
+   note = 'Recorded in exam mode.';
  } else if(result.level==='correct'){
    feedback=`Good answer. ${task.why}`;
    cls='notice-green';
@@ -1047,6 +1056,12 @@ function checkSetChoice(i, exType, idx, optIdx, btn){
  Array.from(parent.children).forEach((b)=>{b.classList.remove('selected','correct','wrong');});
  const strong=optIdx===answerIndex;
  const skill = exType==='ex1' ? 'ex1' : 'ex2';
+ if(mode==='exam'){
+   btn.classList.add('selected');
+   showExamRecordedFeedback(`${setId}_${exType}_${idx}`);
+   recordResult(`Activity ${i+1} ${exType.toUpperCase()}`, task.q, exType==='ex1'?task.shuffled.options[optIdx]:['A','B','C','D'][optIdx], exType==='ex1'?task.shuffled.options[answerIndex]:task.answer, strong, 'Recorded in exam mode.', setId, skill);
+   return;
+ }
  if(strong){
    btn.classList.add('selected','correct');
    document.getElementById(`${setId}_${exType}_${idx}`).innerHTML=`<div class="notice notice-green">Correct. ${task.why}</div>` + (mode==='practice' ? buildWhyItWorks(task.q, exType==='ex1'?task.shuffled.options[answerIndex]:task.answer, task.why) : '');
