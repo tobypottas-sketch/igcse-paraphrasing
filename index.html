@@ -1084,6 +1084,11 @@ function countMatchesFlexible(givenList, answerGroups){
 function checkExercise3(i){
  const set=activities[i], setId='set'+(i+1); const h10=set.ex3_h10.map((_,idx)=>document.getElementById(`${setId}_h10_${idx}`).value); const h11=set.ex3_h11.map((_,idx)=>document.getElementById(`${setId}_h11_${idx}`).value);
  const s10=countMatchesFlexible(h10,set.ex3_h10), s11=countMatchesFlexible(h11,set.ex3_h11); const strong=(s10+s11)>=(set.ex3_h10.length+set.ex3_h11.length-1);
+ if(getMode()==='exam'){
+   showExamRecordedFeedback(`${setId}_ex3_feedback`);
+   recordResult(`Activity ${i+1} EX3`, 'Heading-based notes', h10.concat(h11).filter(Boolean).join(' | '), 'Accepted by heading in any order', strong, 'Recorded in exam mode.', setId, 'ex3');
+   return;
+ }
  document.getElementById(`${setId}_ex3_feedback`).innerHTML=`<div class="notice ${strong?'notice-green':'notice-coral'}">You found <strong>${s10}/${set.ex3_h10.length}</strong> acceptable notes under “${getExercise3Heading(i,10)}” and <strong>${s11}/${set.ex3_h11.length}</strong> under “${getExercise3Heading(i,11)}”. Answers can be in any order within each heading.</div>`;
  recordResult(`Activity ${i+1} EX3`, 'Heading-based notes', h10.concat(h11).filter(Boolean).join(' | '), 'Accepted by heading in any order', strong, 'Exercise 3 is marked by heading, not fixed order.', setId, 'ex3');
 }
@@ -1093,7 +1098,13 @@ function overlapCount(text, sourceWords){const userWords=normalizeText(text).spl
 function updateWordCount(i){const setId='set'+(i+1); document.getElementById(`${setId}_wc`).textContent=wordCount(document.getElementById(`${setId}_summary`).value);}
 function checkExercise4(i){
  const set=activities[i], setId='set'+(i+1), text=document.getElementById(`${setId}_summary`).value.trim(); const wc=wordCount(text), points=countSummaryPoints(text,set.ex4_points), overlap=overlapCount(text,normalizeText(set.ex4_text).split(' '));
- const strong=points>=5 && wc>=65 && wc<=95 && overlap<10; let msg=`You included about <strong>${points}</strong> useful points. Word count: <strong>${wc}</strong>. `;
+ const strong=points>=5 && wc>=65 && wc<=95 && overlap<10;
+ if(getMode()==='exam'){
+   showExamRecordedFeedback(`${setId}_ex4_feedback`);
+   recordResult(`Activity ${i+1} EX4`, set.ex4_title, text, 'A concise own-words summary with several relevant points', strong, 'Recorded in exam mode.', setId, 'ex4');
+   return;
+ }
+ let msg=`You included about <strong>${points}</strong> useful points. Word count: <strong>${wc}</strong>. `;
  if(wc<65) msg+='Your summary is probably too short. '; if(wc>95) msg+='Your summary is too long for the target. '; if(overlap>=10) msg+='You may be lifting too much wording from the source. ';
  document.getElementById(`${setId}_ex4_feedback`).innerHTML=`<div class="notice ${strong?'notice-green':'notice-coral'}">${strong?'Strong summary. ':'Needs more work. '}${msg}</div>` + (getMode()==='practice' && strong ? buildWhyItWorks(set.ex4_title, 'A concise own-words summary with several relevant points', 'Strong summaries select relevant points, keep close to the word limit, and avoid heavy lifting.') : '');
  recordResult(`Activity ${i+1} EX4`, set.ex4_title, text, 'A concise own-words summary with several relevant points', strong, 'Strong summaries select relevant points, keep close to the word limit, and avoid heavy lifting.', setId, 'ex4');
