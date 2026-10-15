@@ -780,51 +780,48 @@ function overlapRatio(a, b){
   sa.forEach(tok => { if(sb.has(tok)) overlap++; });
   return overlap / Math.max(1, Math.min(sa.size, sb.size));
 }
-function evaluateTrainingAnswer(user, acceptedList, prefix='ws'){
-  const clean = normalizeText(user);
-  if(!clean) return {level:'empty'};
-
-  // Synonym tasks can stay generous, but not blank/trivial.
-  if(prefix === 'ws'){
-    if(similarityLoose(user, acceptedList)) return {level:'correct'};
-    const maxOverlap = Math.max.apply(null, acceptedList.map(a => overlapRatio(clean, a)).concat([0]));
-    const containsUsefulCore = acceptedList.some(a => {
-      const core = normalizeText(a).split(' ').filter(w => w.length > 4);
-      return core.some(w => clean.includes(w));
-    });
-    if(maxOverlap >= 0.45 || containsUsefulCore) return {level:'close'};
-    return {level:'try_again'};
-  }
-
-  // Paraphrase tasks need to be much stricter.
-  const words = clean.split(' ').filter(Boolean);
-  if(words.length < 4) return {level:'try_again'};
-
-  const acceptedNorm = acceptedList.map(a => normalizeText(a));
-  const sourceText = normalizeText(
-    String((acceptedList && acceptedList[0]) || '')
-  );
-
-  const maxOverlap = Math.max.apply(null, acceptedNorm.map(a => overlapRatio(clean, a)).concat([0]));
-
-  // Count shared meaningful words with accepted responses
-  const sharedMeaningful = acceptedNorm.some(a => {
-    const targetWords = a.split(' ').filter(w => w.length > 3);
-    const shared = targetWords.filter(w => words.includes(w));
-    return shared.length >= 3;
+function evaluateTrainingAnswer(user, acceptedList, prefix='ws', sourcePrompt=''){
+ const clean=normalizeText(user);
+ if(!clean) return {level:'empty'};
+ if(prefix==='ws'){
+  if(similarityLoose(user,acceptedList)) return {level:'correct'};
+  const maxOverlap=Math.max.apply(null,acceptedList.map(a=>overlapRatio(clean,a)).concat([0]));
+  const containsUsefulCore=acceptedList.some(a=>{
+   const core=normalizeText(a).split(' ').filter(w=>w.length>4);
+   return core.some(w=>clean.includes(w));
   });
-
-  // Require reasonable length and enough overlap with a meaningful accepted response
-  if((maxOverlap >= 0.72 && words.length >= 5) || (maxOverlap >= 0.6 && sharedMeaningful && words.length >= 6)){
-    return {level:'correct'};
-  }
-
-  // Close only if there is a meaningful attempt, not just one or two copied words
-  if((maxOverlap >= 0.4 && words.length >= 4) || (sharedMeaningful && words.length >= 5)){
-    return {level:'close'};
-  }
-
+  if(maxOverlap>=0.45||containsUsefulCore) return {level:'close'};
   return {level:'try_again'};
+ }
+ const words=clean.split(' ').filter(Boolean);
+ if(words.length<4) return {level:'try_again'};
+ const acceptedNorm=acceptedList.map(a=>normalizeText(a)).filter(Boolean);
+ const userTokens=tokenSet(clean);
+ const sourceText=normalizeText(sourcePrompt).replace(/^paraphrase\s+/,'').trim();
+ if(sourceText){
+  const sourceTokens=tokenSet(sourceText);
+  let shared=0;
+  sourceTokens.forEach(tok=>{ if(userTokens.has(tok)) shared++; });
+  const sourceRetention=sourceTokens.size ? shared/sourceTokens.size : 0;
+  const substantialLength=userTokens.size>=Math.max(4,Math.ceil(sourceTokens.size*0.7));
+  if(clean===sourceText||(sourceRetention>=0.8&&substantialLength)) return {level:'try_again'};
+ }
+ const stats=acceptedNorm.map(target=>{
+  const targetTokens=tokenSet(target);
+  const overlap=overlapRatio(clean,target);
+  const lengthRatio=Math.min(userTokens.size,targetTokens.size)/Math.max(1,Math.max(userTokens.size,targetTokens.size));
+  return {overlap,lengthRatio};
+ });
+ const best=stats.reduce((top,item)=>!top||item.overlap>top.overlap?item:top,null)||{overlap:0,lengthRatio:0};
+ const sharedMeaningful=acceptedNorm.some(a=>{
+  const targetWords=a.split(' ').filter(w=>w.length>3);
+  const shared=targetWords.filter(w=>words.includes(w));
+  return shared.length>=Math.min(3,Math.max(2,targetWords.length-1));
+ });
+ if((best.overlap>=0.72&&words.length>=5&&best.lengthRatio>=0.7)||
+    (best.overlap>=0.6&&sharedMeaningful&&words.length>=6&&best.lengthRatio>=0.75)) return {level:'correct'};
+ if((best.overlap>=0.4&&words.length>=4)||(sharedMeaningful&&words.length>=5)) return {level:'close'};
+ return {level:'try_again'};
 }
 
 
@@ -999,7 +996,7 @@ function checkStarterWrite(prefix,idx){
    return;
  }
  const attempt=incrementAttemptCount(prefix, idx);
- const result=evaluateTrainingAnswer(user,task.accepted,prefix);
+ const result=evaluateTrainingAnswer(user,task.accepted,prefix,task.prompt);
  const hint=getWrittenHint(task,prefix);
  let feedback='', cls='notice-coral', strong=false, note=hint, modelBlock='', explain='';
  const skill = prefix==='ws' ? 'synonym_write' : 'paraphrase_write';
@@ -1185,9 +1182,7 @@ function flexiblePhraseMatch(left,right){
  if(!l||!r) return false;
  if(l===r) return true;
  if(hasFlexibleNegation(l)!==hasFlexibleNegation(r)) return false;
- const shorter=l.length<=r.length?l:r, longer=l.length<=r.length?r:l;
- if(!shorter.includes(' ')&&shorter.length<4) return false;
- return (` ${longer} `).includes(` ${shorter} `);
+ return (` ${l} `).includes(` ${r} `);
 }
 function countMatchesFlexible(givenList, answerGroups){
  let matches=0; const used=new Set();
@@ -1216,7 +1211,25 @@ function checkExercise3(i){
  recordResult(`Activity ${i+1} EX3`, 'Heading-based notes', h10.concat(h11).filter(Boolean).join(' | '), 'Accepted by heading in any order', strong, 'Exercise 3 is marked by heading, not fixed order.', setId, 'ex3');
 }
 function wordCount(text){return text.trim()?text.trim().split(/\s+/).length:0;}
-function countSummaryPoints(text, groups){const t=normalizeText(text); let count=0; groups.forEach(group=>{ if(group.some(a=>t.includes(normalizeText(a)))) count++; }); return count;}
+function countSummaryPoints(text, groups){
+ const t=normalizeText(text);
+ const containsNonNegatedPhrase=phrase=>{
+  const p=normalizeText(phrase);
+  if(!t||!p) return false;
+  const padded=` ${t} `, needle=` ${p} `;
+  let from=0;
+  while(true){
+   const idx=padded.indexOf(needle,from);
+   if(idx<0) return false;
+   const before=padded.slice(0,idx).trim().split(/\s+/).filter(Boolean).slice(-4).join(' ');
+   if(!hasFlexibleNegation(before)) return true;
+   from=idx+needle.length;
+  }
+ };
+ let count=0;
+ groups.forEach(group=>{ if(group.some(a=>containsNonNegatedPhrase(a))) count++; });
+ return count;
+}
 function overlapCount(text, sourceWords){const userWords=new Set(normalizeText(text).split(' ').filter(Boolean)); const sourceUnique=new Set(sourceWords.filter(Boolean)); return Array.from(sourceUnique).filter(w=>w.length>4&&userWords.has(w)).length;}
 function checkExercise4(i){
  const set=activities[i], setId='set'+(i+1);
