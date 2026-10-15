@@ -648,11 +648,7 @@ function similarityLoose(answer, acceptedList){
   return acceptedList.some(acc=>{
     const x=normalizeText(acc);
     if(!x) return false;
-    if(a===x) return true;
-    const shorter = a.length <= x.length ? a : x;
-    const longer = a.length <= x.length ? x : a;
-    if(!shorter.includes(' ') && shorter.length < 3) return false;
-    return (` ${longer} `).includes(` ${shorter} `);
+    return a===x || (` ${a} `).includes(` ${x} `);
   });
 }
 function recordResult(area,prompt,user,accepted,strong,note,setId=null, skill=null){
