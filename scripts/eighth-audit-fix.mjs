@@ -18,7 +18,11 @@ const before = `function similarityLoose(answer, acceptedList){
 const after = `function similarityLoose(answer, acceptedList){
   const a=normalizeText(answer);
   if(!a) return false;
-  return acceptedList.some(acc=>a===normalizeText(acc));
+  return acceptedList.some(acc=>{
+    const x=normalizeText(acc);
+    if(!x) return false;
+    return a===x || (\` \${a} \`).includes(\` \${x} \`);
+  });
 }`;
 if (!html.includes(before)) {
   if (html.includes(after)) process.exit(0);
