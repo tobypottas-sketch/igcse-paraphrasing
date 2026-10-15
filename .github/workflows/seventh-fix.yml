@@ -1,0 +1,125 @@
+name: Apply Seventh Audit Paraphrasing Fix
+on:
+  push:
+    branches: [audit/seventh-hardening-20261015]
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: "!contains(github.event.head_commit.message, 'Apply Audit #7 Paraphrasing scoring fixes')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: audit/seventh-hardening-20261015
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Patch Paraphrasing scorers
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+
+          # Exercise 3: user response may contain an accepted phrase, but a fragment of an accepted phrase is not enough.
+          start=s.index('function flexiblePhraseMatch(')
+          end=s.index('\nfunction countMatchesFlexible(', start)
+          new='''function flexiblePhraseMatch(left,right){
+           const l=normalizeText(left), r=normalizeText(right);
+           if(!l||!r) return false;
+           if(l===r) return true;
+           if(hasFlexibleNegation(l)!==hasFlexibleNegation(r)) return false;
+           return (` ${l} `).includes(` ${r} `);
+          }'''
+          s=s[:start]+new+s[end:]
+
+          # Written paraphrases: reject source copying and incomplete model-answer fragments.
+          start=s.index("function evaluateTrainingAnswer(")
+          end=s.index('\nfunction getAttemptKey(', start)
+          new='''function evaluateTrainingAnswer(user, acceptedList, prefix='ws', sourcePrompt=''){
+           const clean=normalizeText(user);
+           if(!clean) return {level:'empty'};
+
+           if(prefix==='ws'){
+            if(similarityLoose(user,acceptedList)) return {level:'correct'};
+            const maxOverlap=Math.max.apply(null,acceptedList.map(a=>overlapRatio(clean,a)).concat([0]));
+            const containsUsefulCore=acceptedList.some(a=>{
+             const core=normalizeText(a).split(' ').filter(w=>w.length>4);
+             return core.some(w=>clean.includes(w));
+            });
+            if(maxOverlap>=0.45||containsUsefulCore) return {level:'close'};
+            return {level:'try_again'};
+           }
+
+           const words=clean.split(' ').filter(Boolean);
+           if(words.length<4) return {level:'try_again'};
+
+           const acceptedNorm=acceptedList.map(a=>normalizeText(a)).filter(Boolean);
+           const userTokens=tokenSet(clean);
+           let sourceText=normalizeText(sourcePrompt).replace(/^paraphrase\s+/,'').trim();
+           if(sourceText){
+            const sourceTokens=tokenSet(sourceText);
+            let shared=0;
+            sourceTokens.forEach(tok=>{ if(userTokens.has(tok)) shared++; });
+            const sourceRetention=sourceTokens.size ? shared/sourceTokens.size : 0;
+            const substantialLength=userTokens.size>=Math.max(4,Math.ceil(sourceTokens.size*0.7));
+            if(clean===sourceText||(sourceRetention>=0.8&&substantialLength)) return {level:'try_again'};
+           }
+
+           const stats=acceptedNorm.map(target=>{
+            const targetTokens=tokenSet(target);
+            const overlap=overlapRatio(clean,target);
+            const lengthRatio=Math.min(userTokens.size,targetTokens.size)/Math.max(1,Math.max(userTokens.size,targetTokens.size));
+            return {target,overlap,lengthRatio};
+           });
+           const best=stats.reduce((top,item)=>!top||item.overlap>top.overlap?item:top,null) || {overlap:0,lengthRatio:0};
+           const sharedMeaningful=acceptedNorm.some(a=>{
+            const targetWords=a.split(' ').filter(w=>w.length>3);
+            const shared=targetWords.filter(w=>words.includes(w));
+            return shared.length>=Math.min(3,Math.max(2,targetWords.length-1));
+           });
+
+           if((best.overlap>=0.72&&words.length>=5&&best.lengthRatio>=0.7) ||
+              (best.overlap>=0.6&&sharedMeaningful&&words.length>=6&&best.lengthRatio>=0.75)){
+            return {level:'correct'};
+           }
+           if((best.overlap>=0.4&&words.length>=4)||(sharedMeaningful&&words.length>=5)) return {level:'close'};
+           return {level:'try_again'};
+          }
+'''
+          s=s[:start]+new+s[end:]
+
+          old="const result=evaluateTrainingAnswer(user,task.accepted,prefix);"
+          if old not in s: raise SystemExit('starter write evaluator call not found')
+          s=s.replace(old,"const result=evaluateTrainingAnswer(user,task.accepted,prefix,task.prompt);",1)
+
+          old="function countSummaryPoints(text, groups){const t=normalizeText(text); let count=0; groups.forEach(group=>{ if(group.some(a=>t.includes(normalizeText(a)))) count++; }); return count;}"
+          if old not in s: raise SystemExit('summary point scorer not found')
+          new="""function containsNonNegatedSummaryPhrase(text, phrase){
+ const t=normalizeText(text), p=normalizeText(phrase);
+ if(!t||!p) return false;
+ const padded=` ${t} `, needle=` ${p} `;
+ let from=0;
+ while(true){
+  const idx=padded.indexOf(needle,from);
+  if(idx<0) return false;
+  const before=padded.slice(0,idx).trim().split(/\\s+/).filter(Boolean).slice(-4).join(' ');
+  if(!hasFlexibleNegation(before)) return true;
+  from=idx+needle.length;
+ }
+}
+function countSummaryPoints(text, groups){let count=0; groups.forEach(group=>{ if(group.some(a=>containsNonNegatedSummaryPhrase(text,a))) count++; }); return count;}"""
+          s=s.replace(old,new,1)
+          p.write_text(s)
+          PY
+      - name: Verify full suite
+        run: node --test tests/*.test.mjs
+      - name: Commit fix
+        run: |
+          git config user.name "Audit Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Apply Audit #7 Paraphrasing scoring fixes"
+          git push origin HEAD:audit/seventh-hardening-20261015
