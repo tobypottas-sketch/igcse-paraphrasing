@@ -12,3 +12,5 @@ test('Paraphrasing Results shows an indicative June 2026 0511 R&W grade from com
   assert.match(html, /June 2026/);
   assert.match(html, /not an official Cambridge result/i);
 });
+
+// Regression guard for completed exam-style work only.
