@@ -1206,6 +1206,13 @@ function checkExercise3(i){
  document.getElementById(`${setId}_ex3_feedback`).innerHTML=`<div class="notice ${strong?'notice-green':'notice-coral'}">You found <strong>${s10}/${set.ex3_h10.length}</strong> acceptable notes under “${getExercise3Heading(i,10)}” and <strong>${s11}/${set.ex3_h11.length}</strong> under “${getExercise3Heading(i,11)}”. Answers can be in any order within each heading.</div>`;
  recordResult(`Activity ${i+1} EX3`, 'Heading-based notes', h10.concat(h11).filter(Boolean).join(' | '), 'Accepted by heading in any order', strong, 'Exercise 3 is marked by heading, not fixed order.', setId, 'ex3');
 }
+function updateWordCount(i){
+ const setId='set'+(i+1);
+ const input=document.getElementById(`${setId}_summary`);
+ const counter=document.getElementById(`${setId}_wc`);
+ if(!input || !counter) return;
+ counter.textContent=wordCount(input.value);
+}
 function wordCount(text){return text.trim()?text.trim().split(/\s+/).length:0;}
 function countSummaryPoints(text, groups){
  const t=normalizeText(text);
