@@ -455,7 +455,7 @@ footer{border-top-color:#dbe8e6}
 <section class="panel" id="panel-set4"><div id="set4Container"></div></section>
 <section class="panel" id="panel-set5"><div id="set5Container"></div></section>
 
-<section class="panel" id="panel-results"><div class="card"><div class="card-header">Results</div><div class="score-grid"><div class="stat-card"><div class="stat-value" id="scoreAttempts">0</div><div class="stat-label">Checked tasks</div></div><div class="stat-card"><div class="stat-value" id="scoreStrong">0</div><div class="stat-label">Strong answers</div></div><div class="stat-card"><div class="stat-value" id="scorePartial">0</div><div class="stat-label">Needs work</div></div><div class="stat-card"><div class="stat-value" id="scoreAccuracy">0%</div><div class="stat-label">Success rate</div></div></div><div class="form-row" style="margin-top:16px"><div class="progress-bg"><div class="progress-fill" id="progressFill" style="width:0%"></div></div></div><div class="form-grid" style="margin-top:16px"><div class="card" style="margin-bottom:0"><div class="card-header">Strengths</div><ul class="checklist" id="strengthList"></ul></div><div class="card" style="margin-bottom:0"><div class="card-header">Targets</div><ul class="checklist" id="targetList"></ul></div></div></div></section>
+<section class="panel" id="panel-results"><div class="card"><div class="card-header">Results</div><div class="score-grid"><div class="stat-card"><div class="stat-value" id="scoreAttempts">0</div><div class="stat-label">Checked tasks</div></div><div class="stat-card"><div class="stat-value" id="scoreStrong">0</div><div class="stat-label">Strong answers</div></div><div class="stat-card"><div class="stat-value" id="scorePartial">0</div><div class="stat-label">Needs work</div></div><div class="stat-card"><div class="stat-value" id="scoreAccuracy">0%</div><div class="stat-label">Success rate</div></div><div class="stat-card"><div class="stat-value" id="scoreGrade">—</div><div class="stat-label">Indicative 0511 R&W grade</div><div class="stat-label" style="margin-top:6px">June 2026 · Component 12 · completed exam-style work only · not an official Cambridge result</div></div></div><div class="form-row" style="margin-top:16px"><div class="progress-bg"><div class="progress-fill" id="progressFill" style="width:0%"></div></div></div><div class="form-grid" style="margin-top:16px"><div class="card" style="margin-bottom:0"><div class="card-header">Strengths</div><ul class="checklist" id="strengthList"></ul></div><div class="card" style="margin-bottom:0"><div class="card-header">Targets</div><ul class="checklist" id="targetList"></ul></div></div></div></section>
 
 <section class="panel" id="panel-review"><div class="card"><div class="card-header">Review</div><div id="reviewNotice" class="notice notice-gold" style="margin-bottom:12px">Complete a full exam-style set to unlock model answers for that set.</div><div id="reviewContainer"></div></div></section>
 </div>
@@ -1282,9 +1282,21 @@ function isSetComplete(i){
         uniqueExerciseCount(st.records,setId,'EX3')>=1 &&
         uniqueExerciseCount(st.records,setId,'EX4')>=1;
 }
+function estimate0511Component12Grade(percent){
+ const thresholds=[55,50,45,40,35,30,25];
+ const grades=['A','B','C','D','E','F','G'];
+ const raw=(Number(percent)||0)*60/100;
+ for(let i=0;i<thresholds.length;i++){ if(raw>=thresholds[i]) return grades[i]; }
+ return 'U';
+}
 function renderResults(){
  const st=getState(), attempts=st.records.length, strong=st.records.filter(r=>r.strong).length, partial=attempts-strong, acc=attempts?Math.round((strong/attempts)*100):0;
+ const examRecords=st.records.filter(r=>r.setId);
+ const examStrong=examRecords.filter(r=>r.strong).length;
+ const examAcc=examRecords.length?Math.round((examStrong/examRecords.length)*100):0;
+ const hasCompletedSet=activities.some((_,idx)=>isSetComplete(idx));
  document.getElementById('scoreAttempts').textContent=attempts; document.getElementById('scoreStrong').textContent=strong; document.getElementById('scorePartial').textContent=partial; document.getElementById('scoreAccuracy').textContent=acc+'%'; document.getElementById('progressFill').style.width=Math.min(100,attempts*2)+'%';
+ document.getElementById('scoreGrade').textContent=hasCompletedSet&&examRecords.length?estimate0511Component12Grade(examAcc):'—';
  const strengths=[], targets=[];
  if(st.records.filter(r=>r.area.includes('EX1')&&r.strong).length>=8) strengths.push('You are handling harder Exercise 1 paraphrase questions well.');
  if(st.records.filter(r=>r.area.includes('EX2')&&r.strong).length>=8) strengths.push('Your section matching is becoming much more accurate.');
