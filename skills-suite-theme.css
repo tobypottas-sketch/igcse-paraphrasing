@@ -1,0 +1,26 @@
+/* iGCSE Skills Suite — shared UI alignment, phase 1.
+   Presentation-only: no grading, exercise options or progress rules.
+   Use app-specific selectors to avoid overriding question controls. */
+:root {
+  --suite-teal: #137e80;
+  --suite-teal-dark: #0e5f61;
+  --suite-ink: #173852;
+  --suite-muted: #4f6676;
+  --suite-border: #d7e6eb;
+}
+html { font-size: 16px; }
+body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.app-container { max-width: 1320px; margin-left: auto; margin-right: auto; }
+.hero-shell { border-radius: 22px; border-color: #cfe6e3; }
+.tab-bar { background: #fff; border: 1px solid var(--suite-border); border-radius: 14px; gap: 6px; padding: 6px; }
+.tab-btn { min-height: 42px; border-radius: 10px; padding: 10px 16px; font-family: inherit; font-size: .875rem; font-weight: 700; color: var(--suite-muted); }
+.tab-btn.active { background: var(--suite-teal); color: #fff; }
+.card { border-color: var(--suite-border); border-radius: 14px; box-shadow: 0 3px 12px rgba(23, 56, 82, .055); }
+.card-header { color: var(--suite-ink); font-weight: 800; }
+.btn { border-radius: 10px; font-family: inherit; }
+.btn-primary { background: var(--suite-teal); color: #fff; }
+.btn-primary:hover { background: var(--suite-teal-dark); }
+.btn-secondary { background: #edf4f5; color: var(--suite-ink); }
+.tab-btn:focus-visible, .btn:focus-visible, .hub-return-link:focus-visible { outline: 3px solid #2e73d6; outline-offset: 3px; }
+@media(max-width:700px) { .tab-btn { padding: 10px 12px; } }
+@media(prefers-reduced-motion:reduce) { .tab-btn, .btn { transition: none; } }
