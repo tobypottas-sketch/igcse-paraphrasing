@@ -24,3 +24,76 @@ body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSyst
 .tab-btn:focus-visible, .btn:focus-visible, .hub-return-link:focus-visible { outline: 3px solid #2e73d6; outline-offset: 3px; }
 @media(max-width:700px) { .tab-btn { padding: 10px 12px; } }
 @media(prefers-reduced-motion:reduce) { .tab-btn, .btn { transition: none; } }
+
+/* Paraphrasing refinement: Overview and shared navigation.
+   Do not modify practice choices, marking feedback, or exam behaviour. */
+#panel-overview > .card {
+  border-radius: 16px;
+  padding: 19px 21px;
+  margin-bottom: 14px;
+}
+#panel-overview > .card .card-header { margin-bottom: 11px; }
+#panel-overview > .card:first-child .notice-blue {
+  background: #f2f9f9;
+  border-color: #d3e7e6;
+  color: #2c4a55;
+  font-size: .925rem;
+  line-height: 1.55;
+  padding: 12px 15px;
+}
+#panel-overview .btn-group { gap: 9px; margin-bottom: 10px; }
+#panel-overview #modePracticeBtn,
+#panel-overview #modeExamBtn {
+  min-height: 44px;
+  padding: 10px 17px;
+  border-radius: 11px;
+  font-size: .925rem;
+}
+#panel-overview #modePracticeBtn.btn-primary,
+#panel-overview #modeExamBtn.btn-primary {
+  background: var(--suite-teal);
+  color: white;
+  box-shadow: none;
+}
+#panel-overview #modeNotice {
+  border: 1px solid #cfe6e3;
+  background: #edf7f6;
+  color: #2c4a4b;
+  border-radius: 12px;
+  font-size: .9rem;
+  line-height: 1.5;
+  padding: 12px 14px;
+}
+#panel-overview .answer-box {
+  background: #f8fbfc;
+  border-color: var(--suite-border);
+  border-radius: 12px;
+  font-size: .9rem;
+}
+#panel-overview > .form-grid { display: block; }
+#panel-overview > .form-grid > .form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+#panel-overview .form-grid .card {
+  min-width: 0;
+  margin-bottom: 0;
+  border-radius: 16px;
+  padding: 18px 20px;
+}
+#panel-overview .checklist li {
+  padding: 7px 0;
+  font-size: .9rem;
+  line-height: 1.5;
+}
+#panel-overview .check-icon { color: var(--suite-teal); }
+.tab-bar .tab-btn:focus:not(:focus-visible) { outline: none; }
+.tab-bar .tab-btn:focus-visible { outline: 2px solid #2e73d6; outline-offset: 2px; }
+@media (max-width: 900px) {
+  #panel-overview > .form-grid > .form-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 700px) {
+  #panel-overview > .card { padding: 16px; }
+  #panel-overview .form-grid .card { padding: 16px; }
+}
