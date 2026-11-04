@@ -97,3 +97,53 @@ body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSyst
   #panel-overview > .card { padding: 16px; }
   #panel-overview .form-grid .card { padding: 16px; }
 }
+
+/* Paraphrasing Overview final polish: compact paired cards and neutral mode. */
+#panel-overview .overview-intro-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: stretch;
+  margin-bottom: 16px;
+}
+#panel-overview .overview-intro-grid > .card {
+  min-width: 0;
+  margin-bottom: 0;
+  padding: 18px 20px;
+  border-radius: 16px;
+}
+#panel-overview .overview-intro-grid > .card .card-header {
+  margin-bottom: 11px;
+}
+#panel-overview .overview-intro-grid > .card:first-child .notice-blue {
+  padding: 12px 14px;
+}
+#panel-overview .overview-intro-grid #modeNotice {
+  padding: 10px 12px;
+}
+#panel-overview .overview-intro-grid .answer-box {
+  margin-top: 9px !important;
+  padding: 9px 12px;
+}
+/* The app swaps btn-primary/btn-secondary classes on mode changes. */
+#panel-overview #modeExamBtn.btn-secondary,
+#panel-overview #modePracticeBtn.btn-secondary {
+  background: #f4f7f8;
+  border: 1px solid #d7e6eb;
+  color: #3b4e5b;
+  box-shadow: none;
+}
+#panel-overview #modeExamBtn.btn-secondary:hover,
+#panel-overview #modePracticeBtn.btn-secondary:hover {
+  background: #e9f1f2;
+  border-color: #bad5d8;
+}
+@media (max-width: 900px) {
+  #panel-overview .overview-intro-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+}
+@media (max-width: 700px) {
+  #panel-overview .overview-intro-grid > .card { padding: 16px; }
+}
